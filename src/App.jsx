@@ -1,81 +1,207 @@
-// App.jsx
 import React, { useState, useEffect } from 'react';
-import { auth, provider } from './firebase'; // Import the firebase config
-import { signInWithPopup } from 'firebase/auth'; // Import signInWithPopup
+import axios from 'axios';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+// Import your Navbar component here
+import Navbar from '../src/assets/components/Navbar'; // Adjust the path if necessary
 
-// NavBar Component
-const NavBar = () => {
-  return (
-    <nav className="bg-gray-800 text-white p-4">
-      <div className="container mx-auto flex justify-between items-center">
-        <div className="text-xl font-bold">TaskFlow</div>
-        <div className="space-x-4">
-          <a href="/" className="hover:text-gray-400">Home</a>
-          <a href="/tasks" className="hover:text-gray-400">Tasks</a>
-        </div>
-      </div>
-    </nav>
-  );
-};
+const App = () => {
+  const [tasks, setTasks] = useState([]);
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    category: 'To-Do',
+  });
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-// Body Component
-const Body = ({ user, signInWithGoogle }) => {
-  return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
-      <div className="container mx-auto">
-        {user ? (
-          <div>
-            <h1 className="text-3xl font-bold text-center mb-6">Welcome, {user.displayName}</h1>
-            <button
-              onClick={() => auth.signOut()}
-              className="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600">
-              Sign out
-            </button>
-          </div>
-        ) : (
-          <div className="text-center">
-            <h1 className="text-3xl font-bold mb-6">Sign in to get started!</h1>
-            <button
-              onClick={signInWithGoogle}
-              className="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">
-              Sign in with Google
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Main App Component
-function App() {
-  const [user, setUser] = useState(null); // State to store user data
-
+  // Fetch tasks from the backend
   useEffect(() => {
-    // Listen to authentication state changes
-    const unsubscribe = auth.onAuthStateChanged(setUser);
-    return () => unsubscribe(); // Cleanup on unmount
+    const fetchTasks = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/tasks');
+        setTasks(response.data);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+      }
+    };
+
+    fetchTasks();
   }, []);
 
-  // Google Sign-In function
-  const signInWithGoogle = async () => {
+  // Handle Add Task input change
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewTask((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Handle Add Task
+  const handleAddTask = async (e) => {
+    e.preventDefault();
     try {
-      const result = await signInWithPopup(auth, provider); // Sign in with Google
-      const user = result.user; // Get user info from result
-      console.log("User signed in: ", user);
-      setUser(user); // Set the user in state
+      const response = await axios.post('http://localhost:5000/tasks', newTask);
+      setTasks((prevTasks) => [...prevTasks, response.data]);
+      setNewTask({ title: '', description: '', category: 'To-Do' });
+      setIsModalOpen(false);
     } catch (error) {
-      console.error("Error signing in with Google: ", error.message);
-      alert("Failed to sign in. Please try again.");
+      console.error('Error adding task:', error);
+    }
+  };
+
+  // Handle Delete Task
+  const handleDelete = async (taskId) => {
+    try {
+      await axios.delete(`http://localhost:5000/tasks/${taskId}`);
+      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
+
+  // Handle Drag and Drop
+  const handleDragEnd = async (result) => {
+    const { destination, source } = result;
+
+    if (!destination) {
+      return;
+    }
+
+    const updatedTasks = [...tasks];
+    const [removedTask] = updatedTasks.splice(source.index, 1);
+    removedTask.category = destination.droppableId;
+
+    updatedTasks.splice(destination.index, 0, removedTask);
+
+    try {
+      await axios.put(`http://localhost:5000/tasks/${removedTask._id}`, {
+        category: removedTask.category,
+      });
+      setTasks(updatedTasks);
+    } catch (error) {
+      console.error('Error updating task category:', error);
     }
   };
 
   return (
-    <div>
-      <NavBar />  {/* Navigation bar */}
-      <Body user={user} signInWithGoogle={signInWithGoogle} />  {/* Main body */}
+    <div className="container mx-auto p-6 bg-white rounded-lg shadow-md">
+      {/* Navbar Component */}
+      <Navbar />
+
+      {/* Add Task Button */}
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="bg-green-500 text-white px-4 py-2 rounded-lg mb-4 hover:bg-green-600"
+      >
+        Add Task
+      </button>
+
+      {/* Modal for Adding Task */}
+      {isModalOpen && (
+        <div className="modal bg-gray-500 bg-opacity-50 fixed inset-0 flex justify-center items-center">
+          <div className="modal-content bg-white p-6 rounded-lg shadow-lg">
+            <h3 className="text-xl font-semibold mb-4">Add New Task</h3>
+            <form onSubmit={handleAddTask}>
+              <div className="mb-4">
+                <label className="block mb-2">Title</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={newTask.title}
+                  onChange={handleInputChange}
+                  className="border p-2 rounded-lg w-full"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block mb-2">Description</label>
+                <textarea
+                  name="description"
+                  value={newTask.description}
+                  onChange={handleInputChange}
+                  className="border p-2 rounded-lg w-full"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block mb-2">Category</label>
+                <select
+                  name="category"
+                  value={newTask.category}
+                  onChange={handleInputChange}
+                  className="border p-2 rounded-lg w-full"
+                >
+                  <option value="To-Do">To-Do</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Done">Done</option>
+                </select>
+              </div>
+              <div className="flex justify-between">
+                <button
+                  type="submit"
+                  className="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
+                >
+                  Add Task
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600"
+                >
+                  Close
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Drag and Drop Task Columns */}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="flex space-x-6">
+          {['To-Do', 'In Progress', 'Done'].map((category) => (
+            <Droppable key={category} droppableId={category}>
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="w-1/3 bg-gray-100 p-4 rounded-lg shadow-lg"
+                >
+                  <h3 className="text-xl font-semibold mb-4">{category}</h3>
+                  {tasks
+                    .filter((task) => task.category === category)
+                    .map((task, index) => (
+                      <Draggable key={task._id} draggableId={task._id} index={index}>
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className="bg-white p-4 mb-4 rounded-lg shadow"
+                          >
+                            <h4 className="font-semibold">{task.title}</h4>
+                            <p>{task.description}</p>
+                            <p className="text-sm text-gray-500">{task.category}</p>
+
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => handleDelete(task._id)}
+                              className="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 mt-2"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          ))}
+        </div>
+      </DragDropContext>
     </div>
   );
-}
+};
 
 export default App;
