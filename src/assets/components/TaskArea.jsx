@@ -5,7 +5,7 @@ const TaskArea = ({ tasks, setTasks }) => {
   const handleDelete = async (taskId) => {
     try {
       // Sending DELETE request to the backend
-      await axios.delete(`http://localhost:5000/tasks/${taskId}`);
+      await axios.delete(`https://taskflow-backend-six.vercel.app/tasks/${taskId}`);
       // Removing the deleted task from the state
       setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
     } catch (error) {

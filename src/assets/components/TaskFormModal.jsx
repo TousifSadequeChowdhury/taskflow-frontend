@@ -17,7 +17,7 @@ const TaskFormModal = ({ isOpen, onClose, onSubmit }) => {
     const task = { title, description, category };
 
     try {
-      const response = await fetch('http://localhost:5000/tasks', {
+      const response = await fetch('https://taskflow-backend-six.vercel.app/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

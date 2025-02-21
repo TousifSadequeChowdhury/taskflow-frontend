@@ -17,7 +17,7 @@ const App = () => {
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/tasks');
+        const response = await axios.get('https://taskflow-backend-six.vercel.app/tasks');
         setTasks(response.data);
       } catch (error) {
         console.error('Error fetching tasks:', error);
@@ -40,7 +40,7 @@ const App = () => {
   const handleAddTask = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5000/tasks', newTask);
+      const response = await axios.post('https://taskflow-backend-six.vercel.app/tasks', newTask);
       setTasks((prevTasks) => [...prevTasks, response.data]);
       setNewTask({ title: '', description: '', category: 'To-Do' });
       setIsModalOpen(false);
@@ -52,7 +52,7 @@ const App = () => {
   // Handle Delete Task
   const handleDelete = async (taskId) => {
     try {
-      await axios.delete(`http://localhost:5000/tasks/${taskId}`);
+      await axios.delete(`https://taskflow-backend-six.vercel.app/tasks/${taskId}`);
       setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
     } catch (error) {
       console.error('Error deleting task:', error);
@@ -74,7 +74,7 @@ const App = () => {
     updatedTasks.splice(destination.index, 0, removedTask);
 
     try {
-      await axios.put(`http://localhost:5000/tasks/${removedTask._id}`, {
+      await axios.put(`https://taskflow-backend-six.vercel.app/tasks/${removedTask._id}`, {
         category: removedTask.category,
       });
       setTasks(updatedTasks);
